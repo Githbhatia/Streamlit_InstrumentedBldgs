@@ -112,12 +112,12 @@ def plotchannel(i,j,ax):
         df = 1.0/dtAccel1[i]
         Sfin= RS_function(accel1[i][int(starttime/dtAccel1[i]):int(endtime/dtAccel1[i])], df, tT, xi, Resp_type = "SA")
         sAll=Sfin[0,:]*scaleValue(unitsAccel1[i])
-        print(df)
         amax=[tT[np.argmax(abs(sAll))], max(abs(sAll))]
         labl = "Damping = "+ str(round(xi,3))+ ": Max at "+ str(round(amax[0],3)) +"sec, "+str(round(amax[1],2))
         ax[j].plot(tT,sAll,linewidth=1.0) 
         ax[j].annotate(labl, xy=(amax[0], amax[1]), xytext=(amax[0], amax[1]))
         ax[j].set_ylabel("Sa (g)")
+        ax[j].text(0.99, 0.97, nameCh1[i] + "; " + location[i] + "; " + rcdTime[i], horizontalalignment='right', verticalalignment='top', fontsize=10, color ='Black',transform=ax[j].transAxes)
     ax[j].grid()
     return(0)
 
@@ -312,7 +312,7 @@ def plottransfer():
     fig4, axa = plt.subplots(3,1, sharex='col', sharey='row')
     fig4.set_figheight(height*3)
     fig4.set_figwidth(width)
-    axa[0].plot(xfi,  np.abs(tF[0:No//2]))
+    axa[0].semilogy(xfi,  np.abs(tF[0:No//2]))
     axa[0].set_xlim(0.0,10)
     axa[0].set_ylim(0.0,None)
     axa[0].set_ylabel('Amplitude')
@@ -331,9 +331,10 @@ def plottransfer():
 
 
 st.title("Vizualize/Plot Recorded Earthquake Building Motions")
-st.write("V2/V2c files are building earthquake records that can be downloaded from Center for Earthquake Engineering Strong Motion CESMD webiste.  Download one free-field record at a time and do not unzip.")
+st.write("V2 files are building earthquake records that can be downloaded from Center for Earthquake Engineering Strong Motion CESMD webiste.  Download one building record at a time and do not unzip.")
 st.write("https://www.strongmotioncenter.org/")
-st.write("This app helps read the file and show the recording and create spectra from the recordings")
+st.write("Also see https://hcai.ca.gov/facilities/building-safety/facility-detail/ for instrumented hospital buildings")
+st.write("This app helps read the file and show the recording and create floor spectra from the recordings")
 filenames=st.file_uploader("Upload V2/V2c zip file",type=[ "zip"])    
 if filenames != None:    
     readFile()
