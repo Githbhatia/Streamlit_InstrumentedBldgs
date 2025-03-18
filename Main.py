@@ -46,14 +46,18 @@ def minaccel(x, t):
     xpos = x.index(ymin); xmin = t[xpos]
     return [xmin, ymin]
 
-def startlimAccel():
-    a1 = next(i for i, x in enumerate(accel1[0]) if abs(x) >5)
-    startTime  = max(a1*dtAccel1[0]- 2, 0)
+def startlimAccel(z):
+    startTime = dtAccel1[0]*numofPointsAccel1[0]/2
+    for j in range(numofChansRead):
+        a1 = next(i for i, x in enumerate(accel1[j]) if abs(x) >z)
+        startTime  = min(a1*dtAccel1[j]- 2, startTime)
     return round(startTime,2)
 
-def endlimAccel():
-    a1 = next(i for i, x in reversed(list(enumerate(accel1[0]))) if abs(x) >5)
-    endTime  = max(a1*dtAccel1[0]+ 2, 0)
+def endlimAccel(z):
+    endTime = dtAccel1[0]*numofPointsAccel1[0]/2
+    for j in range(numofChansRead):
+        a1 = next(i for i, x in reversed(list(enumerate(accel1[j]))) if abs(x) >z)
+        endTime  = max(a1*dtAccel1[j]+ 2, endTime)
     return round(endTime,2)
 
 def saveFile():
@@ -350,8 +354,11 @@ if filenames != None:
     st.subheader("Recorded Values")
     st.write("Read in memory :\n"+ str(filenames.name))
     st.write("Number of channels read: " + str(numofChansRead))
-    values = st.sidebar.slider("Select range of times to use", 0.0, dtAccel1[0]*numofPointsAccel1[0], (startlimAccel(), endlimAccel()), step= 0.1)
-    st.sidebar.caption("*Range autoselected using a trigger of 0.005g")
+    trigger = 5.0
+    for i in range(numofChansRead):
+        trigger = min(abs(max(accel1[i], key=abs))/10,trigger)
+    values = st.sidebar.slider("Select range of times to use", 0.0, dtAccel1[0]*numofPointsAccel1[0], (startlimAccel(trigger), endlimAccel(trigger)), step= 0.1)
+    st.sidebar.caption("*Range autoselected using a trigger of " + str(round(trigger*scaleValue(unitsAccel1[0]),3)) + "g")
     starttime, endtime = values
     width = st.sidebar.slider("plot width", 10, 20, 10)
     height = st.sidebar.slider("plot height", 1, 10, 3)
