@@ -2,5 +2,8 @@ Read and plot CISMIP formatted v2 instrumented building earthquake motion record
 
 3/17/2025 Absolute trigger for autoranging was failing for earthquake records that have very low accelerations - revised for a dyanmic trigger based on 1/10 maximum absolute value.
 
+4/16/2025 CSMIP has changed the format files available, revised to read all channels from a single v2 files as in the new format files.
+4/16/2025 Corrected error when only a single vertical channel is present, as a result some dead space is added to vertical plot space.
+
 
 Try it at https://appinstrumentedbldgs-mltednwkb9re4umeqmdwkb.streamlit.app/
