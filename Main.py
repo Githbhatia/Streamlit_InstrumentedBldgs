@@ -136,16 +136,21 @@ def plotAll():
             noNSChns += 1
         elif "90" in nameCh1[i] or "270" in nameCh1[i]:
             noEWChns += 1
+    #print(noUpChns,noNSChns, noEWChns)
 
     #Up Channnel plots
     if noUpChns > 0:
+
         noSubplotsRows = noUpChns 
         noSubplotsCols = 1
         subplotCounter = 1
         #print(noUpChns)
-
+        if noUpChns == 1:
+            noSubplotsRows = 2
         fig, ax = plt.subplots(noSubplotsRows,noSubplotsCols, sharex='col', sharey='col')
         fig.set_figheight(height*noUpChns)
+        if noUpChns == 1:
+            fig.set_figheight(height*2)
         fig.set_figwidth(width)
         st.write('Vertical Motion Channels')
         fig.tight_layout()
@@ -156,7 +161,11 @@ def plotAll():
                 plotchannel(i,j,ax)
                 j+=1
         ax[0].set_ylim(ax[0].get_ylim()[0]*1.4,ax[0].get_ylim()[1]*1.4)
+        if noUpChns == 1:
+            ax[1].axis('off')
+
         st.pyplot(fig) 
+    
 
 
     #NS Channnel plots
@@ -206,6 +215,8 @@ def plotAll():
     st.pyplot(fig3)
     return(0)
 
+
+
 def readFile():
     global filenames, rcdTime
     global latitude, longitude
@@ -231,67 +242,143 @@ def readFile():
         f=io.BytesIO(archive.read(flist[0]))
         archive2 = zipfile.ZipFile(f, 'r')
         flist2 = archive2.namelist()
-         #print( len(flist2))
-        for index, value in enumerate(flist2):
-            #print(flist2[index])
-            if value[-3:] == ".v2" or  value[-3:] == ".V2":
-                numofChansRead+=1
-                f=io.TextIOWrapper(io.BytesIO(archive2.read(value)))
+        baseName = flist2[0][:(flist2[0]).find(".")]
+        #print(baseName)
+        if (baseName + ".v2" in flist2) and (baseName + ".v2c" in flist2):
+            #print("in")
+            f = io.TextIOWrapper(io.BytesIO(archive2.read(baseName + ".v2")))
+            f.seek(0,2)
+            position = f.tell()
+            while position > 0:
+                position -= 1
+                f.seek(position)
+                thisLine = f.readline()
+                if "End of data for channel" in thisLine:
+                    last_line = thisLine
+                    break
+            numofChansRead= int(last_line[last_line.find("channel")+7:last_line.find("---")].strip())
+            print(numofChansRead)
+            f.seek(0,0)
+            for i in range(0,numofChansRead):
+                    #print(i)
+                    for line in islice(f, 2, 3):
+                        rcdTime.append(line[line.find("Rcrd of") + 7:43].strip())
+                        #print(rcdTime[-1])
 
-                for line in islice(f, 2, 3):
-                    rcdTime.append(line[line.find("Rcrd of") + 7:43].strip())
-                    #print(rcdTime[-1])
+                    for line in islice(f, 2, 3):    
+                        stationNo = line[11:17].strip()
+                        latlong= line[17:40].strip()
+                        latitude.append(float(latlong[:latlong.find(",")-1]))
+                        if latlong[len(latlong)-1:len(latlong)]=="W":
+                            longitude.append(float("-"+latlong[latlong.find(",")+1: len(latlong)-1].strip()))
+                        else:
+                            longitude.append(float(latlong[latlong.find(",")+1: len(latlong)-1].strip()))
+                        #print(latitude[index], longitude[index])
 
-                for line in islice(f, 2, 3):    
-                    stationNo = line[11:17].strip()
-                    latlong= line[17:40].strip()
-                    latitude.append(float(latlong[:latlong.find(",")-1]))
-                    if latlong[len(latlong)-1:len(latlong)]=="W":
-                        longitude.append(float("-"+latlong[latlong.find(",")+1: len(latlong)-1].strip()))
-                    else:
-                        longitude.append(float(latlong[latlong.find(",")+1: len(latlong)-1].strip()))
-                    #print(latitude[index], longitude[index])
+                    for line in islice(f, 1, 2):
+                        location.append(line[line.find("Location: ") + 10:].strip())
+                        #print(location[-1])
 
-                for line in islice(f, 1, 2):
-                    location.append(line[line.find("Location: ") + 10:].strip())
-                    #print(location[-1])
+                    for line in islice(f, 15, 16):
+                        nameCh1.append(line[26:].strip())
+                    for line in islice(f, 0, 1):
+                        nameCh1[-1]=nameCh1[-1] + line.strip()
+                        #print(nameCh1[-1])
 
-                for line in islice(f, 15, 16):
-                    nameCh1.append(line[26:].strip())
-                for line in islice(f, 0, 1):
-                    nameCh1[-1]=nameCh1[-1] + line.strip()
+                    for line in islice(f, 20, 21):
+                        #print(line)
+                        line = line.lower()
+                        numofPointsAccel1.append(int(line[0: line.find("points")].strip()))
+                        dtAccel1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
+                        unitsAccel1.append(line[line.find(", in") + 4: line.find(". (")].strip())
+                    numofLines=(lines(numofPointsAccel1[-1]))
+                    accel1.append(readchunk(f,numofLines))
+                    
 
-                for line in islice(f, 20, 21):
-                    #print(line)
-                    line = line.lower()
-                    numofPointsAccel1.append(int(line[0: line.find("points")].strip()))
-                    dtAccel1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
-                    unitsAccel1.append(line[line.find(", in") + 4: line.find(". (")].strip())
-                numofLines=(lines(numofPointsAccel1[-1]))
-                accel1.append(readchunk(f,numofLines))
-                
+                    for line in islice(f, 0,1):
+                        #print(line)
+                        line = line.lower()
+                        numofPointsVel1.append(int(line[0: line.find("points")].strip()))
+                        dtVel1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
+                        unitsVel1.append(line[line.find(", in") + 4: line.find(".  (")].strip())
+                    numofLines = lines(numofPointsVel1[-1])
+                    vel1.append(readchunk(f,numofLines))
 
-                for line in islice(f, 0,1):
-                    #print(line)
-                    line = line.lower()
-                    numofPointsVel1.append(int(line[0: line.find("points")].strip()))
-                    dtVel1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
-                    unitsVel1.append(line[line.find(", in") + 4: line.find(".  (")].strip())
-                numofLines = lines(numofPointsVel1[-1])
-                vel1.append(readchunk(f,numofLines))
+                    for line in islice(f, 0,1):
+                        #print(line)
+                        line = line.lower()
+                        numofPointsDispl1.append(int(line[0: line.find("points")].strip()))
+                        dtDispl1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
+                        unitsDispl1.append(line[line.find(", in") + 4: line.find(".   ")].strip())
+                    numofLines = lines(numofPointsDispl1[-1])
+                    displ1.append(readchunk(f,numofLines))
 
-                for line in islice(f, 0,1):
-                    #print(line)
-                    line = line.lower()
-                    numofPointsDispl1.append(int(line[0: line.find("points")].strip()))
-                    dtDispl1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
-                    unitsDispl1.append(line[line.find(", in") + 4: line.find(".   ")].strip())
-                numofLines = lines(numofPointsDispl1[-1])
-                displ1.append(readchunk(f,numofLines))
+                    
+                    scale = scaleValue(unitsAccel1[-1]) 
+                    scaledAccel1.append([value*scale for value in accel1[-1]])
+                    f.readline()
 
-                
-                scale = scaleValue(unitsAccel1[-1]) 
-                scaledAccel1.append([value*scale for value in accel1[-1]])
+        else:
+            for index, value in enumerate(flist2):
+                #print(flist2[index])
+                if value[-3:] == ".v2" or  value[-3:] == ".V2":
+                    numofChansRead+=1
+                    f=io.TextIOWrapper(io.BytesIO(archive2.read(value)))
+
+                    for line in islice(f, 2, 3):
+                        rcdTime.append(line[line.find("Rcrd of") + 7:43].strip())
+                        #print(rcdTime[-1])
+
+                    for line in islice(f, 2, 3):    
+                        stationNo = line[11:17].strip()
+                        latlong= line[17:40].strip()
+                        latitude.append(float(latlong[:latlong.find(",")-1]))
+                        if latlong[len(latlong)-1:len(latlong)]=="W":
+                            longitude.append(float("-"+latlong[latlong.find(",")+1: len(latlong)-1].strip()))
+                        else:
+                            longitude.append(float(latlong[latlong.find(",")+1: len(latlong)-1].strip()))
+                        #print(latitude[index], longitude[index])
+
+                    for line in islice(f, 1, 2):
+                        location.append(line[line.find("Location: ") + 10:].strip())
+                        #print(location[-1])
+
+                    for line in islice(f, 15, 16):
+                        nameCh1.append(line[26:].strip())
+                    for line in islice(f, 0, 1):
+                        nameCh1[-1]=nameCh1[-1] + line.strip()
+
+                    for line in islice(f, 20, 21):
+                        #print(line)
+                        line = line.lower()
+                        numofPointsAccel1.append(int(line[0: line.find("points")].strip()))
+                        dtAccel1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
+                        unitsAccel1.append(line[line.find(", in") + 4: line.find(". (")].strip())
+                    numofLines=(lines(numofPointsAccel1[-1]))
+                    accel1.append(readchunk(f,numofLines))
+                    
+
+                    for line in islice(f, 0,1):
+                        #print(line)
+                        line = line.lower()
+                        numofPointsVel1.append(int(line[0: line.find("points")].strip()))
+                        dtVel1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
+                        unitsVel1.append(line[line.find(", in") + 4: line.find(".  (")].strip())
+                    numofLines = lines(numofPointsVel1[-1])
+                    vel1.append(readchunk(f,numofLines))
+
+                    for line in islice(f, 0,1):
+                        #print(line)
+                        line = line.lower()
+                        numofPointsDispl1.append(int(line[0: line.find("points")].strip()))
+                        dtDispl1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
+                        unitsDispl1.append(line[line.find(", in") + 4: line.find(".   ")].strip())
+                    numofLines = lines(numofPointsDispl1[-1])
+                    displ1.append(readchunk(f,numofLines))
+
+                    
+                    scale = scaleValue(unitsAccel1[-1]) 
+                    scaledAccel1.append([value*scale for value in accel1[-1]])
     if numofChansRead == 1:
         st.write("File is probably a free-field record and not a building record. Please upload a building record.")
         st.stop()
