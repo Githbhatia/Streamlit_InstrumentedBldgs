@@ -8,7 +8,7 @@ import scipy.integrate as it
 from scipy.fft import fft, fftfreq
 import zipfile, io
 import scipy
-
+from streamlit_sortables import sort_items
 
 
 def chunkstring(string, length):
@@ -105,14 +105,13 @@ def plotchannel(i,j,ax):
         yf = fft(scaledAccel1[i])
         xf = fftfreq(N, dtAccel1[i])[:N//2]
         ax[j].plot(xf, 2.0/N * np.abs(yf[0:N//2]))
-        ax[j].set_xlim(0,10)
+        ax[j].set_xlim(0,maxFFTylim)
         ax[j].set_xlabel('Hz')
         ax[j].text(0.99, 0.97, nameCh1[i] + "; " + location[i] + "; " + rcdTime[i], horizontalalignment='right', verticalalignment='top', fontsize=10, color ='Black',transform=ax[j].transAxes)
         amax=[xf[np.argmax(abs(yf))], 2.0/N *max(abs(yf))]; ax[j].annotate(str(np.round(amax[0],3)) +"Hz", xy=(amax[0], amax[1]), xytext=(amax[0], amax[1]))
     elif doption =="Floor Spectra":
-        tT = np.concatenate( (np.arange(0.05, 0.1, 0.005) , np.arange (0.1, 0.5, 0.01) , np.arange (0.5, 1, 0.02) , np.arange (1, 6, 0.05) ) ) # Time vector for the spectral response
+        tT = np.concatenate( (np.arange(0.05, 0.1, 0.005) , np.arange (0.1, 0.5, 0.01) , np.arange (0.5, 1, 0.02) , np.arange (1, eT, 0.05) ) ) # Time vector for the spectral response
         Sfin=[]
-        xi = 0.05
         df = 1.0/dtAccel1[i]
         Sfin= RS_function(accel1[i][int(starttime/dtAccel1[i]):int(endtime/dtAccel1[i])], df, tT, xi, Resp_type = "SA")
         sAll=Sfin[0,:]*scaleValue(unitsAccel1[i])
@@ -157,8 +156,8 @@ def plotAll():
 
         j=0
         for i in reversed(range(numofChansRead)):
-            if "Up" in nameCh1[i] or "UP" in nameCh1[i]:
-                plotchannel(i,j,ax)
+            if "Up" in nameCh1[revchan[i]] or "UP" in nameCh1[revchan[i]]:
+                plotchannel(revchan[i],j,ax)
                 j+=1
         ax[0].set_ylim(ax[0].get_ylim()[0]*1.4,ax[0].get_ylim()[1]*1.4)
         if noUpChns == 1:
@@ -184,8 +183,8 @@ def plotAll():
 
     j=0
     for i in reversed(range(numofChansRead)):
-        if "360" in nameCh1[i] or " 0 Deg" in nameCh1[i] or " 0 DEG" in nameCh1[i]:
-            plotchannel(i,j,ax2)
+        if "360" in nameCh1[revchan[i]] or " 0 Deg" in nameCh1[revchan[i]] or " 0 DEG" in nameCh1[i]:
+            plotchannel(revchan[i],j,ax2)
             j+=1
     ax2[0].set_ylim(ax2[0].get_ylim()[0]*1.4,ax2[0].get_ylim()[1]*1.4)
     st.pyplot(fig2)
@@ -208,8 +207,8 @@ def plotAll():
 
     j=0
     for i in reversed(range(numofChansRead)):
-        if "90" in nameCh1[i] or "270" in nameCh1[i]:
-            plotchannel(i,j,ax3)
+        if "90" in nameCh1[revchan[i]] or "270" in nameCh1[revchan[i]]:
+            plotchannel(revchan[i],j,ax3)
             j+=1
     ax3[0].set_ylim(ax3[0].get_ylim()[0]*1.4,ax3[0].get_ylim()[1]*1.4)
     st.pyplot(fig3)
@@ -257,7 +256,7 @@ def readFile():
                     last_line = thisLine
                     break
             numofChansRead= int(last_line[last_line.find("channel")+7:last_line.find("---")].strip())
-            print(numofChansRead)
+            # print(numofChansRead)
             f.seek(0,0)
             for i in range(0,numofChansRead):
                     #print(i)
@@ -449,16 +448,41 @@ if filenames != None:
     starttime, endtime = values
     width = st.sidebar.slider("plot width", 10, 20, 10)
     height = st.sidebar.slider("plot height", 1, 10, 3)
+
+    chanList=[i + ";" + j for i, j in zip(nameCh1, location)]
+    chanList.reverse()
+    sorted_items = chanList.copy()
+    rearrange = st.checkbox("Rearrange channels to change display order?", value=False)
+    if rearrange:
+        st.write("Drag and drop to rearrange channels (Suggest order in descending order of floors with roof at top and basement at bottom)")
+        sorted_items = sort_items(chanList)
+    
+    revchan=[None]*len(chanList)
+    for idx, name in enumerate(sorted_items):
+        revchan[idx] = chanList.index(name)
+    
+    # st.write(revchan)
+
+
     doption = st.selectbox("Plot",("Accel", "Vel", "Disp", "FFT for Accel","Floor Spectra"),)
     if doption != None:
+        if doption == "Floor Spectra":
+            cc1, cc2 = st.tabs(["Damping Ratio", "End Period for Spectra"])
+            with cc1:
+                xi = st.number_input("Damping Ratio", 0.0, 1.0, 0.05, step=0.01, format="%.2f", key="xi")
+            with cc2:
+                eT = st.number_input("End Period for Spectra", 0.1, 10.0, 6.0, step=0.1, format="%.2f", key="eT")
+        if doption == "FFT for Accel":
+            maxFFTylim = st.number_input("Max Hz for FFT", 0.0, 100.0, 10.0, step=0.1, format="%.2f", key="maxFFTylim")
+   
         st.write("Plotting " + doption + " for all channels")
         plotAll()
 
     st.subheader("Transfer Function")
     st.write("Select the input and output channels to plot the transfer function")
-    chanList=[i + ";" + j for i, j in zip(nameCh1, location)]
-    inChn = st.selectbox("Select Input Chan for transfer function", chanList)
-    outChn = st.selectbox("Select output Chan for transfer function", chanList)
+    
+    inChn = st.selectbox("Select Input Chan for transfer function", sorted_items)
+    outChn = st.selectbox("Select output Chan for transfer function", sorted_items)
     if inChn == outChn:
         st.write("Input and Output channels are the same. Please select different channels.")
     else:   
