@@ -454,7 +454,7 @@ if filenames != None:
     sorted_items = chanList.copy()
     rearrange = st.checkbox("Rearrange channels to change display order?", value=False)
     if rearrange:
-        st.write("Drag and drop to rearrange channels (Suggest order in descending order of floors with roof at top and basement at bottom)")
+        st.write("Drag and drop to rearrange channels (Suggested order in descending order of floors with roof at top and basement at bottom)")
         sorted_items = sort_items(chanList)
     
     revchan=[None]*len(chanList)
