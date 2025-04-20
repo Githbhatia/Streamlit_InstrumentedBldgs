@@ -484,8 +484,13 @@ if filenames != None:
     st.subheader("Transfer Function")
     st.write("Select the input and output channels to plot the transfer function")
     
-    inChn = st.selectbox("Select Input Chan for transfer function", sorted_items,index=len(sorted_items)-1)
-    outChn = st.selectbox("Select output Chan for transfer function", sorted_items)
+    if rearrange:
+        inChn = st.selectbox("Select Input Chan for transfer function", sorted_items,index=len(sorted_items)-1)
+        outChn = st.selectbox("Select output Chan for transfer function", sorted_items)
+    else:
+        inChn = st.selectbox("Select Input Chan for transfer function", sorted_items2,index=len(sorted_items2)-1)
+        outChn = st.selectbox("Select output Chan for transfer function", sorted_items2)
+
     if inChn == outChn:
         st.write("Input and Output channels are the same. Please select different channels.")
     else:   
