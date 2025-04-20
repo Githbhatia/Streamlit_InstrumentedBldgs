@@ -419,7 +419,7 @@ def plottransfer():
     axa[2].grid()
     return(fig4)
 
-
+st.logo("HXBLogo.png", size="large")
 st.title("Vizualize/Plot Recorded Earthquake Building Motions")
 st.write("V2 files are building earthquake records that can be downloaded from Center for Earthquake Engineering Strong Motion CESMD webiste.  Download one building record at a time and do not unzip.")
 st.write("https://www.strongmotioncenter.org/")
