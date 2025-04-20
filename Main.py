@@ -183,7 +183,7 @@ def plotAll():
 
     j=0
     for i in reversed(range(numofChansRead)):
-        if "360" in nameCh1[revchan[i]] or " 0 Deg" in nameCh1[revchan[i]] or " 0 DEG" in nameCh1[i]:
+        if "360" in nameCh1[revchan[i]] or " 0 Deg" in nameCh1[revchan[i]] or " 0 DEG" in nameCh1[revchan[i]]:
             plotchannel(revchan[i],j,ax2)
             j+=1
     ax2[0].set_ylim(ax2[0].get_ylim()[0]*1.4,ax2[0].get_ylim()[1]*1.4)
@@ -386,8 +386,9 @@ def readFile():
 def plottransfer():
     inputChn =chanList.index(inChn)
     outputChn = chanList.index(outChn)
-    # print(inputChn)
-    # print(outputChn)
+    st.write("Using Input Channel = " + chanList[inputChn])
+    st.write("Using Output Channel = " +chanList[outputChn])
+    print(outputChn)
 
     Ni = len(scaledAccel1[inputChn])
     yfi = fft(scaledAccel1[inputChn])
@@ -450,17 +451,19 @@ if filenames != None:
     height = st.sidebar.slider("plot height", 1, 10, 3)
 
     chanList=[i + ";" + j for i, j in zip(nameCh1, location)]
-    chanList.reverse()
     sorted_items = chanList.copy()
+    sorted_items2 = chanList.copy()
+    sorted_items2.reverse()
     rearrange = st.checkbox("Rearrange channels to change display order?", value=False)
     if rearrange:
-        st.write("Drag and drop to rearrange channels (Suggested order in descending order of floors with roof at top and basement at bottom)")
-        sorted_items = sort_items(chanList)
+        st.write("Drag and drop to rearrange channels (Suggested order: In descending order of floors with roof at top and basement at bottom)")
+        sorted_items = sort_items(sorted_items2)
     
+
     revchan=[None]*len(chanList)
     for idx, name in enumerate(sorted_items):
         revchan[idx] = chanList.index(name)
-    
+    revchan.reverse()
     # st.write(revchan)
 
 
@@ -481,7 +484,7 @@ if filenames != None:
     st.subheader("Transfer Function")
     st.write("Select the input and output channels to plot the transfer function")
     
-    inChn = st.selectbox("Select Input Chan for transfer function", sorted_items)
+    inChn = st.selectbox("Select Input Chan for transfer function", sorted_items,index=len(sorted_items)-1)
     outChn = st.selectbox("Select output Chan for transfer function", sorted_items)
     if inChn == outChn:
         st.write("Input and Output channels are the same. Please select different channels.")
