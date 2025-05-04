@@ -8,5 +8,6 @@ Read and plot CESMD/CISMIP formatted v2 instrumented building earthquake motion 
 
 4/18/2025 Added option to change damping ratio and end-period for floor spectra.  Also, added an option to rearrange the channels by dragging and dropping using streamlit_sortables (which is pretty neat).
 
+5/3/2025 Added option to calculate drift from user selected channels (further refinement needed).  Also added option to output velocity and displacement channels.
 
 Try it at https://appinstrumentedbldgs-mltednwkb9re4umeqmdwkb.streamlit.app/
