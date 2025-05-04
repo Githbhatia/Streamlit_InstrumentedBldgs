@@ -60,22 +60,30 @@ def endlimAccel(z):
         endTime  = max(a1*dtAccel1[j]+ 2, endTime)
     return round(endTime,2)
 
-def saveFile():
+def saveFile(avd):
     T1 = np.arange(0.0,numofPointsAccel1[0]*dtAccel1[0], dtAccel1[0])
     textstring=""
     j=0
     textstring += "Time(sec)"
     for i in range(numofChansRead):
-        textstring += ", " + nameCh1[i].replace(",","_").replace(" ", "_")
+        textstring += ", " + nameCh1[i].replace(",","_").replace(" ", "_") + ":" + location[i].replace(",","_").replace(" ", "_")
     textstring += "\n"
     index = len(T1)
     while j < index:
         textstring += str(round(T1[j],3))
         for i in range(numofChansRead):
-            textstring += ", " + str(scaledAccel1[i][j]) 
+            if avd == "Accel":
+                textstring += ", " + str(scaledAccel1[i][j])
+            elif avd == "Vel":
+                textstring += ", " + str(vel1[i][j])
+            else:
+                textstring += ", " + str(displ1[i][j])
         textstring += "\n"
         j+= 1
     return (textstring)
+
+
+
 
 @st.cache_data
 def plotchannel(i,j,ax):
@@ -452,6 +460,7 @@ if filenames != None:
 
     chanList=[i + ";" + j for i, j in zip(nameCh1, location)]
     sorted_items = chanList.copy()
+    sorted_items.reverse()
     sorted_items2 = chanList.copy()
     sorted_items2.reverse()
     rearrange = st.checkbox("Rearrange channels to change display order?", value=False)
@@ -481,15 +490,53 @@ if filenames != None:
         st.write("Plotting " + doption + " for all channels")
         plotAll()
 
+
+    st.subheader("Floor Drifts")
+   
+    selectedFloors = st.multiselect("Select two channels on different floors", sorted_items, default=sorted_items[-1], max_selections=2)
+    
+    if len(selectedFloors) == 2 and selectedFloors[0] != selectedFloors[1]:
+        selectedFloorsIndex = [None]*len(selectedFloors)
+        for idx, name in enumerate(selectedFloors):
+            selectedFloorsIndex[idx] = revchan[chanList.index(name)]
+
+        # st.write(chanList)
+        # st.write(selectedFloorsIndex)
+        if selectedFloorsIndex[0] > selectedFloorsIndex[1]:
+            selectedFloorsIndex.reverse()
+            selectedFloors.reverse()
+        st.write("Selected Floors: " + selectedFloors[0] + " and " + selectedFloors[1])
+        noFlrs = st.number_input("No of floors between channels", min_value=1,step=1, key="numfloors")
+        if st.button("Calculate Floor Drifts"):
+            st.write("Calculating Floor Drifts")
+            fig5, ax5 = plt.subplots(1,1, sharex='col', sharey='row')
+            fig5.set_figheight(height*1.5)
+            fig5.set_figwidth(width)
+            fig5.suptitle('Floor Drift Calculation', fontsize=11)
+            fig5.canvas.manager.set_window_title('Floor Drift Calculation')
+            T1 = np.arange(0.0,numofPointsAccel1[0]*dtAccel1[0], dtAccel1[0])
+            for i in range(len(selectedFloorsIndex)-1):
+                drift = np.subtract(displ1[selectedFloorsIndex[i+1]], displ1[selectedFloorsIndex[i]])/noFlrs
+                st.write("Drift between " + selectedFloors[i] + " and " + selectedFloors[i+1])
+                st.write("Max Drift = " + str(round(max(abs(drift)),3)) + " cm per floor")
+                ax5.plot(T1, drift, label='Drift per floor')
+                ax5.plot(T1,displ1[selectedFloorsIndex[i]], linestyle="--",label=selectedFloors[i])
+                ax5.plot(T1,displ1[selectedFloorsIndex[i+1]],linestyle="--",label=selectedFloors[i+1])
+                ax5.legend()
+                ax5.set_xlim([starttime, endtime])
+                ax5.set_xlabel('Secs')
+                ax5.set_ylabel('Drift (cm)')
+                ax5.grid()
+                st.pyplot(fig5)
+
+
     st.subheader("Transfer Function")
     st.write("Select the input and output channels to plot the transfer function")
     
-    if rearrange:
-        inChn = st.selectbox("Select Input Chan for transfer function", sorted_items,index=len(sorted_items)-1)
-        outChn = st.selectbox("Select output Chan for transfer function", sorted_items)
-    else:
-        inChn = st.selectbox("Select Input Chan for transfer function", sorted_items2,index=len(sorted_items2)-1)
-        outChn = st.selectbox("Select output Chan for transfer function", sorted_items2)
+
+    inChn = st.selectbox("Select Input Chan for transfer function", sorted_items,index=len(sorted_items)-1)
+    outChn = st.selectbox("Select output Chan for transfer function", sorted_items)
+
 
     if inChn == outChn:
         st.write("Input and Output channels are the same. Please select different channels.")
@@ -498,6 +545,8 @@ if filenames != None:
             fig =plottransfer()
             st.pyplot(fig)
     
-    st.subheader("Download Accelerations")
-    text_contents = saveFile()
-    st.download_button("Save Acceleration file", text_contents, file_name="accelerations.csv",mime="text/csv",)
+    st.subheader("Download Ground Motions")
+    
+    st.download_button("Save Acceleration file", saveFile("Accel"), file_name="accelerations.csv",mime="text/csv",)
+    st.download_button("Save Velocity file", saveFile("Vel"), file_name="velocity.csv",mime="text/csv",)
+    st.download_button("Save Displacement file", saveFile("Disp"), file_name="displacements.csv",mime="text/csv",)
