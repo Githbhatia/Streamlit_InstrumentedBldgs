@@ -9,6 +9,7 @@ from scipy.fft import fft, fftfreq
 import zipfile, io
 import scipy
 from streamlit_sortables import sort_items
+import math
 
 
 def chunkstring(string, length):
@@ -81,8 +82,6 @@ def saveFile(avd):
         textstring += "\n"
         j+= 1
     return (textstring)
-
-
 
 
 @st.cache_data
@@ -232,7 +231,7 @@ def readFile():
     global T1
     global scaledAccel1, accel1, vel1, displ1
     global EOF,numofChansRead
-    global unitsAccel1, unitsVel1, unitsDispl1, maxFFTylim, stationNo
+    global unitsAccel1, unitsVel1, unitsDispl1, maxFFTylim, stationNo,stationD
 
     latitude=[]; longitude=[];accel1=[];vel1=[];displ1=[];scaledAccel1=[];nameCh1=[]; location=[]
     numofPointsAccel1=[]; dtAccel1=[]; unitsAccel1=[]
@@ -288,6 +287,7 @@ def readFile():
 
                     for line in islice(f, 15, 16):
                         nameCh1.append(line[26:].strip())
+                        stationD = line[26:line.find("Chan")].strip()
                     for line in islice(f, 0, 1):
                         nameCh1[-1]=nameCh1[-1] + line.strip()
                         #print(nameCh1[-1])
@@ -352,6 +352,7 @@ def readFile():
 
                     for line in islice(f, 15, 16):
                         nameCh1.append(line[26:].strip())
+                        stationD = line[26:line.find("Chan")].strip()
                     for line in islice(f, 0, 1):
                         nameCh1[-1]=nameCh1[-1] + line.strip()
 
@@ -458,7 +459,9 @@ if filenames != None:
     width = st.sidebar.slider("plot width", 10, 20, 10)
     height = st.sidebar.slider("plot height", 1, 10, 3)
 
-    chanList=[i + ";" + j for i, j in zip(nameCh1, location)]
+    st.write("station: " + stationD)
+    chanList2=[i + ";" + j for i, j in zip(nameCh1, location)]
+    chanList = [i.replace(stationD,"") for i in chanList2]
     sorted_items = chanList.copy()
     sorted_items.reverse()
     sorted_items2 = chanList.copy()
@@ -492,42 +495,104 @@ if filenames != None:
 
 
     st.subheader("Floor Drifts")
-   
-    selectedFloors = st.multiselect("Select two channels on different floors", sorted_items, default=sorted_items[-1], max_selections=2)
-    
-    if len(selectedFloors) == 2 and selectedFloors[0] != selectedFloors[1]:
-        selectedFloorsIndex = [None]*len(selectedFloors)
-        for idx, name in enumerate(selectedFloors):
-            selectedFloorsIndex[idx] = revchan[chanList.index(name)]
 
-        # st.write(chanList)
-        # st.write(selectedFloorsIndex)
-        if selectedFloorsIndex[0] > selectedFloorsIndex[1]:
-            selectedFloorsIndex.reverse()
-            selectedFloors.reverse()
-        st.write("Selected Floors: " + selectedFloors[0] + " and " + selectedFloors[1])
+    resDrift = st.toggle('Resultant Floor Drift Plots', False)
+    if resDrift:
+        st.write("Select the channels to plot resultant floor drifts")
+        selectedFloorsH = st.multiselect("Select two channels in different directions on the same higher floor", sorted_items, default=sorted_items[-1], max_selections=2)
+        st.write("#")
+        selectedFloorsL = st.multiselect("Select two channels in different directions on the same lower floor", sorted_items, default=sorted_items[-1], max_selections=2) 
+        st.write("#") 
+        noFlrs = st.number_input("No of floors between channels", min_value=1,step=1, key="numfloorsres")
+
+        if len(selectedFloorsH) == 2 and len(selectedFloorsL) == 2:
+            if st.button("Calculate Floor Drifts", key="resDrift"):
+                st.write("Calculating Floor Drifts")
+                selectedFloorsIndexH = [None]*len(selectedFloorsH)
+                selectedFloorsIndexL = [None]*len(selectedFloorsL)
+                
+                if "360" in selectedFloorsH[0] or " 0 Deg" in selectedFloorsH[0] or "NS" in selectedFloorsH[0]:
+                    selectedFloorsH.reverse()
+                    
+                if "360" in selectedFloorsL[0] or " 0 Deg" in selectedFloorsL[0] or "NS" in selectedFloorsL[0]:
+                    selectedFloorsL.reverse()
+                
+                st.write("Selected Channels on Upper floor: " + selectedFloorsH[0] + " and " + selectedFloorsH[1])
+                st.write("Selected Channels on lower Floor: " + selectedFloorsL[0] + " and " + selectedFloorsL[1])   
+                
+                for idx, name in enumerate(selectedFloorsH):
+                    selectedFloorsIndexH[idx] = chanList.index(name)
+                for idx, name in enumerate(selectedFloorsL):
+                    selectedFloorsIndexL[idx] = chanList.index(name)
+                fig6, ax6 = plt.subplots(1,1, sharex='col', sharey='row')
+                fig6.set_figheight(width)
+                fig6.set_figwidth(width)
+                sLoc = int(starttime/dtAccel1[0]); eLoc = int(endtime/dtAccel1[0])
+                ax6.plot(displ1[selectedFloorsIndexH[0]][sLoc:eLoc], displ1[selectedFloorsIndexH[1]][sLoc:eLoc],linewidth = 0.5, linestyle="--", label = "Upper Floor")
+                ax6.plot(displ1[selectedFloorsIndexL[0]][sLoc:eLoc], displ1[selectedFloorsIndexL[1]][sLoc:eLoc],linewidth = 0.5, linestyle="--", label = "Lower Floor")
+                ewdiff = np.subtract(displ1[selectedFloorsIndexH[0]][sLoc:eLoc], displ1[selectedFloorsIndexL[0]][sLoc:eLoc])
+                nsdiff = np.subtract(displ1[selectedFloorsIndexH[1]][sLoc:eLoc], displ1[selectedFloorsIndexL[1]][sLoc:eLoc])    
+                ax6.plot(ewdiff,nsdiff, color='green',linewidth=2.0, label = "Drift")
+                rotmaxLoc = np.argmax(np.sqrt(np.square(ewdiff[:])+np.square(nsdiff[:])))
+                resmax = np.sqrt(np.square(ewdiff[rotmaxLoc])+np.square(nsdiff[rotmaxLoc]))
+                resAngle = np.arctan2(ewdiff[rotmaxLoc],nsdiff[rotmaxLoc])
+                ax6.plot([0,ewdiff[rotmaxLoc]], [0, nsdiff[rotmaxLoc]], color='red',linewidth=2.0 )
+                ax6.annotate(str(round(resmax,3)) + "@ " +str(round(resAngle*180/math.pi,2))+ r"$^\circ$", xy=(ewdiff[rotmaxLoc], nsdiff[rotmaxLoc]), xytext=(ewdiff[rotmaxLoc], nsdiff[rotmaxLoc]), fontsize=10, color= 'Blue')
+                maxLimit = max(np.max(displ1[selectedFloorsIndexH[0]][sLoc:eLoc]), np.max(displ1[selectedFloorsIndexH[1]][sLoc:eLoc]),np.abs(np.min(displ1[selectedFloorsIndexH[0]][sLoc:eLoc])),np.abs(np.min(displ1[selectedFloorsIndexH[1]][sLoc:eLoc])))/0.95
+                maxLimit = max(maxLimit, resmax)
+                ax6.set_xlim(-maxLimit, maxLimit)
+                ax6.set_ylim(-maxLimit, maxLimit)
+                x_left, x_right = ax6.get_xlim()
+                y_low, y_high = ax6.get_ylim()
+                ax6.set_aspect(abs((x_right-x_left)/(y_low-y_high)))
+                xlabel=ax6.get_xticks()
+                zind = np.where(xlabel == 0)[0][0]
+                for i in range(zind,len(xlabel)):
+                    cr = plt.Circle((0, 0), xlabel[i], linestyle="--", color= 'k',linewidth=0.3, fill=False)
+                    ax6.add_patch(cr)
+                
+                ax6.legend()
+                ax6.grid()
+                st.pyplot(fig6)
+                st.write("Max Drift per floor= " + str(round(resmax/noFlrs,3)) + " cm at " + str(round(resAngle*180/math.pi,2)) + r"$^\circ$")
+
+
+    else:
+        selectedFloors = st.multiselect("Select two channels on different floors", sorted_items, default=sorted_items[-1], max_selections=2)
+        st.write("#")
         noFlrs = st.number_input("No of floors between channels", min_value=1,step=1, key="numfloors")
-        if st.button("Calculate Floor Drifts"):
-            st.write("Calculating Floor Drifts")
-            fig5, ax5 = plt.subplots(1,1, sharex='col', sharey='row')
-            fig5.set_figheight(height*1.5)
-            fig5.set_figwidth(width)
-            fig5.suptitle('Floor Drift Calculation', fontsize=11)
-            fig5.canvas.manager.set_window_title('Floor Drift Calculation')
-            T1 = np.arange(0.0,numofPointsAccel1[0]*dtAccel1[0], dtAccel1[0])
-            for i in range(len(selectedFloorsIndex)-1):
-                drift = np.subtract(displ1[selectedFloorsIndex[i+1]], displ1[selectedFloorsIndex[i]])/noFlrs
-                st.write("Drift between " + selectedFloors[i] + " and " + selectedFloors[i+1])
-                st.write("Max Drift = " + str(round(max(abs(drift)),3)) + " cm per floor")
-                ax5.plot(T1, drift, label='Drift per floor')
-                ax5.plot(T1,displ1[selectedFloorsIndex[i]], linestyle="--",label=selectedFloors[i])
-                ax5.plot(T1,displ1[selectedFloorsIndex[i+1]],linestyle="--",label=selectedFloors[i+1])
-                ax5.legend()
-                ax5.set_xlim([starttime, endtime])
-                ax5.set_xlabel('Secs')
-                ax5.set_ylabel('Drift (cm)')
-                ax5.grid()
-                st.pyplot(fig5)
+
+        if len(selectedFloors) == 2 and selectedFloors[0] != selectedFloors[1]:
+            selectedFloorsIndex = [None]*len(selectedFloors)
+            for idx, name in enumerate(selectedFloors):
+                selectedFloorsIndex[idx] = chanList.index(name)
+
+            if selectedFloorsIndex[0] > selectedFloorsIndex[1]:
+                selectedFloorsIndex.reverse()
+                selectedFloors.reverse()
+            st.write("Selected Floors: " + selectedFloors[0] + " and " + selectedFloors[1])
+            
+            
+            if st.button("Calculate Floor Drifts"):
+                fig5, ax5 = plt.subplots(1,1, sharex='col', sharey='row')
+                fig5.set_figheight(height*1.5)
+                fig5.set_figwidth(width)
+                fig5.suptitle('Floor Drift Calculation', fontsize=11)
+                fig5.canvas.manager.set_window_title('Floor Drift Calculation')
+                T1 = np.arange(0.0,numofPointsAccel1[0]*dtAccel1[0], dtAccel1[0])
+                for i in range(len(selectedFloorsIndex)-1):
+                    drift = np.subtract(displ1[selectedFloorsIndex[i+1]], displ1[selectedFloorsIndex[i]])
+                    st.write("Drift between " + selectedFloors[i] + " and " + selectedFloors[i+1])
+                    st.write("Max Drift = " + str(round(max(abs(drift/noFlrs)),3)) + " cm per floor")
+                    ax5.plot(T1, drift, label='Drift')
+                    ax5.plot(T1,displ1[selectedFloorsIndex[i]], linewidth = 0.5, linestyle="--",label=selectedFloors[i])
+                    ax5.plot(T1,displ1[selectedFloorsIndex[i+1]],linewidth = 0.5, linestyle="--",label=selectedFloors[i+1])
+                    ax5.legend()
+                    ax5.set_xlim([starttime, endtime])
+                    ax5.set_xlabel('Secs')
+                    ax5.set_ylabel('Drift (cm)')
+                    ax5.grid()
+                    st.pyplot(fig5)
 
 
     st.subheader("Transfer Function")
