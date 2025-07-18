@@ -30,9 +30,7 @@ def lines(points):
     return nLines
 
 def scaleValue(units):
-    if units =="cm/sec2":
-        return 1/980.665
-    elif units == "cm/s^2":
+    if units.lower() =="cm/sec2" or units.lower() == "cm/sec^2" or units.lower() == "cm/s^2" or units.lower() == "cm/sec/sec" :
         return 1/980.665
     else:
         return 1.0
@@ -62,7 +60,7 @@ def endlimAccel(z):
     return round(endTime,2)
 
 def saveFile(avd):
-    T1 = np.arange(0.0,numofPointsAccel1[0]*dtAccel1[0], dtAccel1[0])
+    T1 = np.arange(0.0,min(numofPointsAccel1)*dtAccel1[0], dtAccel1[0])
     textstring=""
     j=0
     textstring += "Time(sec)"
@@ -73,6 +71,7 @@ def saveFile(avd):
     while j < index:
         textstring += str(round(T1[j],3))
         for i in range(numofChansRead):
+
             if avd == "Accel":
                 textstring += ", " + str(scaledAccel1[i][j])
             elif avd == "Vel":
@@ -97,7 +96,7 @@ def plotchannel(i,j,ax):
         yV1 = scaledAccel1[i]
 
     if doption in ["Accel", "Vel", "Disp"]:
-        T1 = np.arange(0.0,numofPointsAccel1[i]*dtAccel1[i], dtAccel1[i])
+        T1 = np.arange(0.0,min(numofPointsAccel1)*dtAccel1[i], dtAccel1[i])
         ax[j].plot(T1,yV1)
         ax[j].text(0.99, 0.97, nameCh1[i] + "; " + location[i] + "; " + rcdTime[i], horizontalalignment='right', verticalalignment='top', fontsize=10, color ='Black',transform=ax[j].transAxes)
         ax[j].set_xlabel('Secs')
@@ -249,7 +248,10 @@ def readFile():
         archive2 = zipfile.ZipFile(f, 'r')
         flist2 = archive2.namelist()
         baseName = flist2[0][:(flist2[0]).find(".")]
-        #print(baseName)
+        if baseName == "Structural Records":
+            archive2 = zipfile.ZipFile(io.BytesIO(archive2.read("Structural Records.ZIP")), 'r')
+            flist2 = archive2.namelist()
+            baseName = flist2[0][:(flist2[0]).find(".")]
         if (baseName + ".v2" in flist2) and (baseName + ".v2c" in flist2):
             #print("in")
             f = io.TextIOWrapper(io.BytesIO(archive2.read(baseName + ".v2")))
@@ -268,8 +270,11 @@ def readFile():
             for i in range(0,numofChansRead):
                     #print(i)
                     for line in islice(f, 2, 3):
-                        rcdTime.append(line[line.find("Rcrd of") + 7:43].strip())
-                        #print(rcdTime[-1])
+                        if "Rcrd of" in line:
+                            rcdTime.append(line[line.find("Rcrd of") + 7:43].strip())
+                        else:
+                            rcdTime.append(line.strip())
+                        # print(rcdTime[-1])
 
                     for line in islice(f, 2, 3):    
                         stationNo = line[11:17].strip()
@@ -297,7 +302,11 @@ def readFile():
                         line = line.lower()
                         numofPointsAccel1.append(int(line[0: line.find("points")].strip()))
                         dtAccel1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
-                        unitsAccel1.append(line[line.find(", in") + 4: line.find(". (")].strip())
+                        if '8f10.' in line:
+                            unitsAccel1.append(line[line.lower().find(", in") + 4: line.lower().find(". (")].strip())
+                        else:
+                            unitsAccel1.append(line[line.lower().find("(units:") + 7: line.lower().find(")")].strip())
+                    # print(unitsAccel1[-1])
                     numofLines=(lines(numofPointsAccel1[-1]))
                     accel1.append(readchunk(f,numofLines))
                     
@@ -333,8 +342,11 @@ def readFile():
                     f=io.TextIOWrapper(io.BytesIO(archive2.read(value)))
 
                     for line in islice(f, 2, 3):
-                        rcdTime.append(line[line.find("Rcrd of") + 7:43].strip())
-                        #print(rcdTime[-1])
+                        if "Rcrd of" in line:
+                            rcdTime.append(line[line.find("Rcrd of") + 7:43].strip())
+                        else:
+                            rcdTime.append(line.strip())
+                        # print(rcdTime[-1])
 
                     for line in islice(f, 2, 3):    
                         stationNo = line[11:17].strip()
@@ -361,7 +373,11 @@ def readFile():
                         line = line.lower()
                         numofPointsAccel1.append(int(line[0: line.find("points")].strip()))
                         dtAccel1.append(float(line[line.find("at ") + 3: line.find(" sec")].strip()))
-                        unitsAccel1.append(line[line.find(", in") + 4: line.find(". (")].strip())
+                        if '8f10.' in line:
+                            unitsAccel1.append(line[line.lower().find(", in") + 4: line.lower().find(". (")].strip())
+                        else:
+                            unitsAccel1.append(line[line.lower().find("(units:") + 7: line.lower().find(")")].strip())
+                    # print(unitsAccel1[-1])
                     numofLines=(lines(numofPointsAccel1[-1]))
                     accel1.append(readchunk(f,numofLines))
                     
@@ -384,9 +400,15 @@ def readFile():
                     numofLines = lines(numofPointsDispl1[-1])
                     displ1.append(readchunk(f,numofLines))
 
-                    
                     scale = scaleValue(unitsAccel1[-1]) 
                     scaledAccel1.append([value*scale for value in accel1[-1]])
+    numofPoints = min(numofPointsAccel1)
+    for i in range(numofChansRead):
+        scaledAccel1[i] = scaledAccel1[i][:numofPoints]
+        accel1[i] = accel1[i][:numofPoints]
+        vel1[i] = vel1[i][:numofPoints]
+        displ1[i] = displ1[i][:numofPoints]
+
     if numofChansRead == 1:
         st.write("File is probably a free-field record and not a building record. Please upload a building record.")
         st.stop()
@@ -456,8 +478,8 @@ if filenames != None:
     values = st.sidebar.slider("Select range of times to use", 0.0, dtAccel1[0]*numofPointsAccel1[0], (startlimAccel(trigger), endlimAccel(trigger)), step= 0.1)
     st.sidebar.caption("*Range autoselected using a trigger of " + str(round(trigger*scaleValue(unitsAccel1[0]),3)) + "g")
     starttime, endtime = values
-    width = st.sidebar.slider("plot width", 10, 20, 10)
-    height = st.sidebar.slider("plot height", 1, 10, 3)
+    width = 10
+    height = 3
 
     st.write("station: " + stationD)
     chanList2=[i + ";" + j for i, j in zip(nameCh1, location)]
