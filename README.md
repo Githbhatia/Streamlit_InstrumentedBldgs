@@ -12,4 +12,6 @@ Read and plot CESMD/CISMIP formatted v2 instrumented building earthquake motion 
 
 5/11/2025 Added option to calculate resultant drift  (4 Channels over 2 storeys). Corrected issue with channels being jumbled when rearranged.
 
+7/18/2025 Revised to read older format files, revised to adjust for unequal records (some older files have unequal records in some channels).
+
 Try it at https://appinstrumentedbldgs-mltednwkb9re4umeqmdwkb.streamlit.app/
