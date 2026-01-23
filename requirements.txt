@@ -2,6 +2,7 @@
 numpy
 pandas
 scipy
-streamlit==1.53.0
+streamlit>=1.53.0
 streamlit_sortables
+
 
