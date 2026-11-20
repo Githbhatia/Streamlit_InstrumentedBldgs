@@ -137,9 +137,9 @@ def plotAll():
     for i in range(numofChansRead):
         if "Up" in nameCh1[i] or "UP" in nameCh1[i]:
             noUpChns += 1
-        elif "360" in nameCh1[i] or " 0 Deg" in nameCh1[i] or " 0 DEG" in nameCh1[i]:
+        elif "360" in nameCh1[i] or " 0 Deg" in nameCh1[i] or " 0 DEG" in nameCh1[i] or "180" in nameCh1[i]:
             noNSChns += 1
-        elif "90" in nameCh1[i] or "270" in nameCh1[i]:
+        elif "90" in nameCh1[i] or "270" in nameCh1[i] or " 90" in nameCh1[i] :
             noEWChns += 1
     #print(noUpChns,noNSChns, noEWChns)
 
@@ -174,7 +174,7 @@ def plotAll():
 
 
     #NS Channnel plots
-
+    st.write('NS Motion Channels =', noNSChns)
     noSubplotsRows = noNSChns
     noSubplotsCols = 1
     subplotCounter = 1
@@ -189,14 +189,14 @@ def plotAll():
 
     j=0
     for i in reversed(range(numofChansRead)):
-        if "360" in nameCh1[revchan[i]] or " 0 Deg" in nameCh1[revchan[i]] or " 0 DEG" in nameCh1[revchan[i]]:
+        if "360" in nameCh1[revchan[i]] or " 0 Deg" in nameCh1[revchan[i]]  or " 0 DEG" in nameCh1[revchan[i]] or "180" in nameCh1[revchan[i]]:
             plotchannel(revchan[i],j,ax2)
             j+=1
     ax2[0].set_ylim(ax2[0].get_ylim()[0]*1.4,ax2[0].get_ylim()[1]*1.4)
     st.pyplot(fig2)
     
     #EW Channnel plots
-
+    st.write('EW Motion Channels =', noEWChns)
     noSubplotsRows = noEWChns
     noSubplotsCols = 1
     subplotCounter = 1
@@ -213,7 +213,7 @@ def plotAll():
 
     j=0
     for i in reversed(range(numofChansRead)):
-        if "90" in nameCh1[revchan[i]] or "270" in nameCh1[revchan[i]]:
+        if "90" in nameCh1[revchan[i]] or "270" in nameCh1[revchan[i]] or " 90" in nameCh1[revchan[i]]:
             plotchannel(revchan[i],j,ax3)
             j+=1
     ax3[0].set_ylim(ax3[0].get_ylim()[0]*1.4,ax3[0].get_ylim()[1]*1.4)
