@@ -14,4 +14,6 @@ Read and plot CESMD/CISMIP formatted v2 instrumented building earthquake motion 
 
 7/18/2025 Revised to read older format files, revised to adjust for unequal records (some older files have unequal records in some channels).
 
+11/20/2026 Added more angles to sort out directions.
+
 Try it at https://appinstrumentedbldgs-mltednwkb9re4umeqmdwkb.streamlit.app/
